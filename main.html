@@ -1,0 +1,123 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilt Numbers Game</title>
+<style>
+  body {
+    margin:0;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:system-ui, sans-serif;
+    background:#111;
+    color:#fff;
+    flex-direction:column;
+    text-align:center;
+    user-select:none;
+  }
+  #number {
+    font-size:20vw;
+    font-weight:bold;
+  }
+  #message {
+    font-size:16px;
+    margin:16px 0 0 0;
+    color:#aaa;
+  }
+  button {
+    padding:12px 18px;
+    font-size:18px;
+    margin-top:16px;
+    border-radius:8px;
+    border:none;
+    background:#333;
+    color:#fff;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+  <div id="number">–</div>
+  <div id="message">Tap "Enable Tilt" to start, or tap anywhere to draw if tilt fails.</div>
+  <button id="enable">Enable Tilt</button>
+
+<script>
+const numberEl = document.getElementById("number");
+const messageEl = document.getElementById("message");
+const enableBtn = document.getElementById("enable");
+
+let lastDraw = 0;
+const COOLDOWN = 1000; // 1 second between draws
+const THRESHOLD = 60;  // tilt downward threshold
+let tiltEnabled = false;
+
+// Draw a random number 1-50
+function drawNumber() {
+  const n = Math.floor(Math.random() * 50) + 1;
+  numberEl.textContent = n;
+  lastDraw = Date.now();
+}
+
+// Handle tilt
+function handleTilt(e) {
+  if (!tiltEnabled) return;
+  const beta = e.beta; // front-back tilt
+  const now = Date.now();
+  if (beta > THRESHOLD && now - lastDraw > COOLDOWN) {
+    drawNumber();
+  }
+}
+
+// Enable tilt (after user gesture)
+async function enableTilt() {
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res === "granted") {
+        window.addEventListener("deviceorientation", handleTilt);
+        tiltEnabled = true;
+        messageEl.textContent = "Tilt downward to draw the next number!";
+        enableBtn.style.display = "none";
+        drawNumber();
+      } else {
+        fallbackTap();
+      }
+    } catch (err) {
+      fallbackTap();
+    }
+  } else if (window.DeviceOrientationEvent) {
+    // Non-iOS browsers
+    window.addEventListener("deviceorientation", handleTilt);
+    tiltEnabled = true;
+    messageEl.textContent = "Tilt downward to draw the next number!";
+    enableBtn.style.display = "none";
+    drawNumber();
+  } else {
+    fallbackTap();
+  }
+}
+
+// Fallback: tap anywhere
+function fallbackTap() {
+  tiltEnabled = false;
+  messageEl.textContent = "Tilt not available. Tap anywhere to draw a number!";
+  enableBtn.style.display = "none";
+}
+
+// Add listeners
+enableBtn.addEventListener("click", enableTilt);
+document.body.addEventListener("click", (e) => {
+  // Ignore clicking the button itself
+  if (e.target === enableBtn) return;
+  if (!tiltEnabled) drawNumber();
+});
+
+// Draw first number on load
+drawNumber();
+</script>
+</body>
+</html>
